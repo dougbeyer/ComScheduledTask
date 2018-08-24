@@ -1,0 +1,9 @@
+**/.vs
+**/ipch
+**/Debug
+**/Release
+**/*.db
+**/*.opendb
+**/*.log
+**/~*.*
+TestStringBuffer/**
