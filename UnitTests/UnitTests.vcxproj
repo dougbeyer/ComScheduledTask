@@ -97,7 +97,10 @@
       <AdditionalDependencies>cppunitd_dll.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>copy $(CPP_UNIT_HOME)\lib\cppunitd_dll.dll $(OutDir)\cppunitd_dll.dll </Command>
+      <Command>copy $(CPP_UNIT_HOME)\lib\cppunitd_dll.dll $(OutDir)\cppunitd_dll.dll
+mkdir C:\ProgramData\TaskSchedulerUtilTests
+copy $(ProjectDir)dummy.txt C:\ProgramData\TaskSchedulerUtilTests\dummy.txt
+copy $(ProjectDir)copy.bat C:\ProgramData\TaskSchedulerUtilTests\copy.bat</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -116,7 +119,10 @@
       <AdditionalDependencies>cppunitd_dll.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>copy $(CPP_UNIT_HOME)\lib\cppunitd_dll.dll $(OutDir)\cppunitd_dll.dll </Command>
+      <Command>copy $(CPP_UNIT_HOME)\lib\cppunitd_dll.dll $(OutDir)\cppunitd_dll.dll
+mkdir C:\ProgramData\TaskSchedulerUtilTests
+copy $(ProjectDir)dummy.txt C:\ProgramData\TaskSchedulerUtilTests\dummy.txt
+copy $(ProjectDir)copy.bat C:\ProgramData\TaskSchedulerUtilTests\copy.bat</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -139,7 +145,10 @@
       <AdditionalDependencies>cppunit_dll.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>copy $(CPP_UNIT_HOME)\lib\cppunit_dll.dll $(OutDir)\cppunit_dll.dll </Command>
+      <Command>copy $(CPP_UNIT_HOME)\lib\cppunitd_dll.dll $(OutDir)\cppunitd_dll.dll
+mkdir C:\ProgramData\TaskSchedulerUtilTests
+copy $(ProjectDir)dummy.txt C:\ProgramData\TaskSchedulerUtilTests\dummy.txt
+copy $(ProjectDir)copy.bat C:\ProgramData\TaskSchedulerUtilTests\copy.bat</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -162,7 +171,10 @@
       <AdditionalDependencies>cppunit_dll.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>copy $(CPP_UNIT_HOME)\lib\cppunit_dll.dll $(OutDir)\cppunit_dll.dll </Command>
+      <Command>copy $(CPP_UNIT_HOME)\lib\cppunitd_dll.dll $(OutDir)\cppunitd_dll.dll
+mkdir C:\ProgramData\TaskSchedulerUtilTests
+copy $(ProjectDir)dummy.txt C:\ProgramData\TaskSchedulerUtilTests\dummy.txt
+copy $(ProjectDir)copy.bat C:\ProgramData\TaskSchedulerUtilTests\copy.bat</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

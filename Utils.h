@@ -45,6 +45,14 @@ namespace cofense
       static bool getProcessesWithName( const STRING & processName, std::set<DWORD> & processIds );
 
 
+      // Returns true if the file exists; false otherwise.
+      static bool fileExists( const STRING & filePath );
+
+
+      // Returns true if the file is successfully deleted or it the file doesn't exist. If errorIfNotExists is true,
+      // then returns false if the file doesn't exist.
+      static bool deleteFile(const STRING & filePath, bool errorIfNotExists = false);
+
 
       ///////////////////////////////////////////////////////////////////////////////////////////
       //  Getters/Setters

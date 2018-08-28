@@ -138,6 +138,31 @@ bool Utils::getProcessesWithName( const STRING & processName, std::set<DWORD> & 
   }
 
 
+bool Utils::fileExists( const STRING & filePath )
+  {
+  std::ifstream ifile( filePath.c_str() );
+  return (bool)ifile;
+  }
+
+
+bool Utils::deleteFile( const STRING & filePath, bool errorIfNotExists )
+  {
+  bool fileExists = Utils::fileExists( filePath );
+
+  if ( !fileExists && errorIfNotExists )
+    return false;
+  else if ( !fileExists && !errorIfNotExists )
+    return true;
+
+  // We know the file exists so delete it.
+  assert( fileExists );
+  return ( 0 == _tremove( filePath.c_str() ) );
+  }
+
+
+
+
+
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

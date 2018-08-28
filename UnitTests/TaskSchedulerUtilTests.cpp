@@ -21,7 +21,7 @@ Misc Comments:
 #include "TaskSchedulerUtilTests.h"
 
 // Including the cpp file is good because it gives the unit tests access to the non-public members. Be sure to mark
-// the cpp source files that are copied into the unit test project as "excluded from build".
+// the cpp source files that are copied into the unit test project as "excluded from build" if they are included here.
 #include "TaskSchedulerUtil.cpp"
 
 
@@ -29,10 +29,25 @@ using namespace test;
 using namespace cofense;
 
 
-namespace
-    {
+///////////////////////////////////////////////////////////////////////////////////////////////////
+//  File-scoped support functions.
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    }
+namespace
+  {
+  const STRING TASK_NAME    ( _T( "TaskSchedulerUtilTests Task" ) );
+  const STRING AUTHOR_NAME  ( _T( "Some Author Name" ) );
+
+  // C:\\ProgramData\\TaskSchedulerUtilTest is created by post-build steps in the UnitTest VStuido project.
+  //
+  const STRING EXE_PATH     ( _T( "C:\\ProgramData\\TaskSchedulerUtilTests\\copy.bat" ) );
+  const STRING WORKING_DIR  ( _T( "C:\\ProgramData\\TaskSchedulerUtilTests" ) );
+  const STRING COPIED_FILE  ( _T( "C:\\ProgramData\\TaskSchedulerUtilTests\\dummy2.txt" ) );
+
+
+  bool getNowPlus   ( unsigned int numSecondsToAdd, TDateTime & theTime );
+  bool waitForFile  ( const STRING & fileName, DWORD timeoutInSeconds );
+  }
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -48,33 +63,15 @@ CPPUNIT_TEST_SUITE_NAMED_REGISTRATION( TaskSchedulerUtilTests, "TaskSchedulerUti
 
 void TaskSchedulerUtilTests::setUp()
   {
-
+  CPPUNIT_ASSERT( Utils::deleteFile( COPIED_FILE ) );
   }
 
 
 void TaskSchedulerUtilTests::tearDown()
   {
-
+  CPPUNIT_ASSERT( Utils::deleteFile( COPIED_FILE ) );
   }
 
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-//  File-scoped support functions.
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-namespace
-    {
-    const STRING TASK_NAME    ( _T( "TaskSchedulerUtilTests Task" ) );
-    const STRING AUTHOR_NAME  ( _T( "Some Author Name" ) );
-
-    // The path to Notepad.exe is the same on all Windows versions.
-    const STRING NOTEPAD_PATH ( _T( "C:\\Windows\\Notepad.exe" ) );
-
-
-    //bool getNowPlus                 ( unsigned int numSecondsToAdd, struct tm & theTime );
-    bool getNowPlus                 ( unsigned int numSecondsToAdd, TDateTime & theTime );
-    //void convertStructTmToTDateTime ( struct tm & cTime, TDateTime & theTime );
-    }
 
 
 
@@ -111,33 +108,22 @@ void TaskSchedulerUtilTests::testCreateScheduledTask_LaunchExecutable()
   {
   TaskSchedulerUtil tsu;
 
-  TDateTime startTime = 0;
-  if ( !getNowPlus( 5, startTime ) )
-    CPPUNIT_ASSERT( false );
-
   // Test attempting to create the task without first initializing COM.
-  CPPUNIT_ASSERT( !tsu.createScheduledTask_LaunchExecutable( TASK_NAME, AUTHOR_NAME, startTime, NOTEPAD_PATH ) );
+  CPPUNIT_ASSERT( !tsu.createScheduledTask_LaunchExecutable( TASK_NAME, AUTHOR_NAME, WORKING_DIR, EXE_PATH ) );
 
   // Initialize COM.
   CPPUNIT_ASSERT( tsu.init() );
 
-  // **TODO**: DSB, 08/28/2018 - Not implemented yet. Obtain a map of all existing NotePad process ids.
+  // Verify that the result file doesn't exist.
+  CPPUNIT_ASSERT( !Utils::fileExists( COPIED_FILE ) );
 
   // Create the task.
-  CPPUNIT_ASSERT( tsu.createScheduledTask_LaunchExecutable( TASK_NAME, AUTHOR_NAME, startTime, NOTEPAD_PATH ) );
+  CPPUNIT_ASSERT( tsu.createScheduledTask_LaunchExecutable( TASK_NAME, AUTHOR_NAME, WORKING_DIR, EXE_PATH ) );
 
-  // **TODO**: DSB, 08/26/2018 - Not implemented yet. Verify task exists. Will need to add code to TaskSchedulerUtil
-  // class to enumerate registered tasks.
-
-  // **TODO**: DSB, 08/28/2018 - Not implemented yet. Verify the task worked. Get all existing process ids and verify that
-  // there is one that wasn't there before.
-
-  // **TODO**: DSB, 08/28/2018 - Not implemented yet. Kill the NotePad.exe created by the task.
+  // Verify that the result file does exist.
+  CPPUNIT_ASSERT( waitForFile( COPIED_FILE, 5 ) );
   };
 
-
-// **TODO**: DSB, 08/26/2018 - Not implemented yet. How to verify task executes??? Maybe I can create a task that copies
-// a file from the test area. Then I'd only need to verify that the file got copied.
 
 
 
@@ -156,51 +142,24 @@ namespace
     }
 
 
-  //bool getNowPlus( unsigned int numSecondsToAdd, struct tm & theTime )
-  //  {
-  //  // Prep the output params.
-  //  SecureZeroMemory( &theTime, sizeof( struct tm ) );
+  bool waitForFile( const STRING & fileName, DWORD timeoutInSeconds )
+    {
+    TDateTime startTime = _time64( NULL );
+    TDateTime endTime   = startTime + timeoutInSeconds;
 
-  //  __time64_t now = _time64( NULL );
+    bool result = false;
+    do
+      {
+      if ( Utils::fileExists( fileName ) )
+        {
+        result = true;
+        break;
+        }
 
-  //  now += numSecondsToAdd;
+      Sleep( 200 );
 
-  //  if ( 0 == _localtime64_s( &theTime, &now ) )
-  //    return true;
-  //  else
-  //    {
-  //    CPPUNIT_ASSERT( false );
-  //    return false;
-  //    }
-  //  }
+      } while ( _time64( NULL ) < endTime );
 
-
-  //bool getNowPlus( unsigned int numSecondsToAdd, TDateTime & theTime )
-  //  {
-  //  struct tm cTime = {0};
-  //  if ( !getNowPlus( numSecondsToAdd, cTime ) )
-  //    {
-  //    CPPUNIT_ASSERT( false );
-  //    return false;
-  //    }
-
-  //  convertStructTmToTDateTime( cTime, theTime );
-  //  return true;
-  //  }
-
-
-  //void convertStructTmToTDateTime( struct tm & cTime, TDateTime & theTime )
-  //  {
-  //  // Prep the output params.
-  //  SecureZeroMemory( &theTime, sizeof( TDateTime ) );
-
-  //  theTime.year    = (unsigned short)cTime.tm_year + 1900;
-  //  theTime.month   = (unsigned char)cTime.tm_mon + 1;
-  //  theTime.day     = (unsigned char)cTime.tm_mday;
-  //  theTime.hours   = (unsigned char)cTime.tm_hour;
-  //  theTime.minutes = (unsigned char)cTime.tm_min;
-  //  theTime.seconds = (unsigned char)cTime.tm_sec;
-
-  //  // Since we're dealing with local time, we can leave the UTC offsets at zero.
-  //  }
+    return result;
+    }
   }

@@ -64,7 +64,7 @@ namespace
   bool              setupTaskPrincipal        ( ITaskDefinition * pTask );
   bool              setupTaskSettings         ( ITaskDefinition * pTask );
   bool              setupTaskTrigger          ( ITaskDefinition * pTask );
-  bool              setupTaskAction           ( ITaskDefinition * pTask, const STRING & exePath );
+  bool              setupTaskAction           ( ITaskDefinition * pTask, const STRING & workingDir, const STRING & exePath );
   bool              registerTask              ( ITaskFolder * pFolder, ITaskDefinition * pTask, const STRING & taskName );
   }
 
@@ -164,6 +164,7 @@ bool TaskSchedulerUtil::createScheduledTask_LaunchExecutable
   (
   const STRING & taskName,
   const STRING & authorName,
+  const STRING & workingDir,
   const STRING & exePath
   )
   {
@@ -228,7 +229,7 @@ bool TaskSchedulerUtil::createScheduledTask_LaunchExecutable
     goto DONE;
     }
 
-  if ( !setupTaskAction( pTask, exePath ) )
+  if ( !setupTaskAction( pTask, workingDir, exePath ) )
     {
     Utils::log( _T( "\ncreateScheduledTask_LaunchExecutable() - Failed to set task trigger info." ) );
     goto DONE;
@@ -519,7 +520,7 @@ namespace
     }
 
 
-  bool setupTaskAction( ITaskDefinition * pTask, const STRING & exePath )
+  bool setupTaskAction( ITaskDefinition * pTask, const STRING & workingDir, const STRING & exePath )
     {
     if ( NULL == pTask || exePath.empty() )
       {
@@ -556,13 +557,25 @@ namespace
       goto DONE;
       }
 
-    // Set the path of the executable to notepad.exe.
+    // Set the path of the executable.
     hr = pExecAction->put_Path( _bstr_t( exePath.c_str() ) );
     result = SUCCEEDED( hr );
     if( !result )
       {
       Utils::log( _T( "\nsetupTaskAction() - Cannot put action path: %x" ), hr );
       goto DONE;
+      }
+
+    // Set the path of the working directory.
+    if ( !workingDir.empty() )
+      {
+      hr = pExecAction->put_WorkingDirectory( _bstr_t( workingDir.c_str() ) );
+      result = SUCCEEDED( hr );
+      if( !result )
+        {
+        Utils::log( _T( "\nsetupTaskAction() - Cannot put action working directory: %x" ), hr );
+        goto DONE;
+        }
       }
 
     DONE:

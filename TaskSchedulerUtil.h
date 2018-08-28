@@ -45,9 +45,11 @@ namespace cofense
       // of scheduled task that I feel is appropriate.
       //
       // createScheduledTask_LaunchExecutable() will launch the specified executable as soon as the task is registered.
+      // The executable's working directory will be workingDir (if blank, no working dir will be set).
       //
       bool createScheduledTask_LaunchExecutable(  const STRING &    taskName,
                                                   const STRING &    authorName,
+                                                  const STRING &    workingDir,
                                                   const STRING &    exePath );
 
 
