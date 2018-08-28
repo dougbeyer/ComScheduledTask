@@ -63,7 +63,7 @@ namespace
   bool              setupTaskRegistrationInfo ( ITaskDefinition * pTask, const STRING & authorName );
   bool              setupTaskPrincipal        ( ITaskDefinition * pTask );
   bool              setupTaskSettings         ( ITaskDefinition * pTask );
-  bool              setupTaskTrigger          ( ITaskDefinition * pTask, const TDateTime & startTime );
+  bool              setupTaskTrigger          ( ITaskDefinition * pTask );
   bool              setupTaskAction           ( ITaskDefinition * pTask, const STRING & exePath );
   bool              registerTask              ( ITaskFolder * pFolder, ITaskDefinition * pTask, const STRING & taskName );
   }
@@ -162,10 +162,9 @@ void TaskSchedulerUtil::deinitCom()
 
 bool TaskSchedulerUtil::createScheduledTask_LaunchExecutable
   (
-  const STRING &    taskName,
-  const STRING &    authorName,
-  const TDateTime & startTime,
-  const STRING &    exePath
+  const STRING & taskName,
+  const STRING & authorName,
+  const STRING & exePath
   )
   {
   if ( !comInitialized() )
@@ -223,7 +222,7 @@ bool TaskSchedulerUtil::createScheduledTask_LaunchExecutable
     goto DONE;
     }
 
-  if ( !setupTaskTrigger( pTask, startTime ) )
+  if ( !setupTaskTrigger( pTask ) )
     {
     Utils::log( _T( "\ncreateScheduledTask_LaunchExecutable() - Failed to set task trigger info." ) );
     goto DONE;
@@ -466,7 +465,7 @@ namespace
     }
 
 
-  bool setupTaskTrigger( ITaskDefinition * pTask, const TDateTime & startTime )
+  bool setupTaskTrigger( ITaskDefinition * pTask )
     {
     if ( NULL == pTask )
       {
@@ -474,11 +473,9 @@ namespace
       return false;
       }
 
-    ITriggerCollection *  pTriggerCollection  = NULL;
-    ITrigger *            pTrigger            = NULL;
-    ITimeTrigger *        pTimeTrigger        = NULL;
-
-    STRING dateTimeStr;
+    ITriggerCollection *    pTriggerCollection  = NULL;
+    ITrigger *              pTrigger            = NULL;
+    IRegistrationTrigger *  pRegTrigger        = NULL;
 
     HRESULT hr = pTask->get_Triggers( &pTriggerCollection );
     if( FAILED( hr ) )
@@ -487,8 +484,8 @@ namespace
       return false;
       }
 
-    //  Add the time trigger to the task.
-    hr = pTriggerCollection->Create( TASK_TRIGGER_TIME, &pTrigger );
+    //  Add the registration trigger to the task.
+    hr = pTriggerCollection->Create( TASK_TRIGGER_REGISTRATION, &pTrigger );
     bool result = SUCCEEDED( hr );
     if( !result )
       {
@@ -496,11 +493,11 @@ namespace
       goto DONE;
       }
 
-    hr = pTrigger->QueryInterface( IID_ITimeTrigger, (void**) &pTimeTrigger );
+    hr = pTrigger->QueryInterface( IID_IRegistrationTrigger, (void**) &pRegTrigger );
     result = SUCCEEDED( hr );
     if( !result )
       {
-      Utils::log( _T( "\nsetupTaskSettings() - QueryInterface call failed for ITimeTrigger: %x" ), hr );
+      Utils::log( _T( "\nsetupTaskSettings() - QueryInterface call failed for registration trigger: %x" ), hr );
       goto DONE;
       }
 
@@ -508,41 +505,16 @@ namespace
     // this task. However, I may want to use a guid or something to ensure uniqueness.
     //
     // Trigger id.
-    hr = pTimeTrigger->put_Id( _bstr_t( _T( "Trigger1" ) ) );
+    hr = pRegTrigger->put_Id( _bstr_t( _T( "Trigger1" ) ) );
     if( FAILED( hr ) )
       Utils::log( _T( "\nsetupTaskSettings() - Cannot put trigger ID: %x" ), hr );
-
-    // Trigger end time.
-    TDateTime endTime = startTime + 60; // Plus 60 seconds. The time delta was chosen arbitrarily.
-    if ( dateTimeToStr( endTime, dateTimeStr ) )
-      {
-      hr = pTimeTrigger->put_EndBoundary( _bstr_t( dateTimeStr.c_str() ) );
-      if( FAILED( hr ) )
-        Utils::log( _T( "\nsetupTaskSettings() - Cannot put end boundary on trigger: %x" ), hr );
-      }
-    else
-      Utils::log( _T( "\nsetupTaskSettings() - Faled to convert end time to string." ) );
-
-    // Trigger start time.
-    if ( dateTimeToStr( startTime, dateTimeStr ) )
-      {
-      hr = pTimeTrigger->put_StartBoundary( _bstr_t( dateTimeStr.c_str() ) );
-      result = SUCCEEDED( hr );
-      if( !result )
-        Utils::log( _T( "\nsetupTaskSettings() - Cannot add start boundary to trigger: %x" ), hr );
-      }
-    else
-      {
-      Utils::log( _T( "\nsetupTaskSettings() - Faled to convert start time to string." ) );
-      result = false;
-      }
 
     DONE:
       pTriggerCollection->Release();
       if ( NULL != pTrigger )
         pTrigger->Release();
-      if ( NULL != pTimeTrigger )
-        pTimeTrigger->Release();
+      if ( NULL != pRegTrigger )
+        pRegTrigger->Release();
       return result;
     }
 

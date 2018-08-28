@@ -20,34 +20,6 @@ Misc Comments:
 
 namespace cofense
 {
-
-  // DSB, 08/26/2018 - I could have used the <chrono> datetime stuff. But for this coding exercise, I'll make it simple.
-  //
-  //typedef __time64_t TDateTime;
-
-  //typedef struct
-  //  {
-  //  unsigned short  year;
-  //  unsigned char   month;
-  //  unsigned char   day;
-  //  unsigned char   hours;
-  //  unsigned char   minutes;
-  //  unsigned char   seconds;
-  //  char            utcOffsetHours; // Can be negative (e.g. Pacific time zone = -8).
-  //  unsigned char   utcOffsetMinutes;
-
-  //  void addSeconds( unsigned int seconds )
-  //    {
-  //    this.seconds += seconds;
-  //    if ( this.seconds > 60 )
-  //      {
-  //      this.minutes += 1;
-  //      this.seconds -= 60;
-  //      }
-  //    }
-  //  } TDateTime;
-
-
   class TaskSchedulerUtil
     {
     public:
@@ -72,12 +44,10 @@ namespace cofense
       // DSB, 08/26/2018 - Since the coding exercise description was very brief, I'll assume it's ok to create any kind
       // of scheduled task that I feel is appropriate.
       //
-      // createScheduledTask_LaunchExecutable() will launch the specified executable at the specified time. The task will
-      // become deactivated shortly after the start time; effectively making this a "run once" task.
+      // createScheduledTask_LaunchExecutable() will launch the specified executable as soon as the task is registered.
       //
       bool createScheduledTask_LaunchExecutable(  const STRING &    taskName,
                                                   const STRING &    authorName,
-                                                  const TDateTime & startTime,
                                                   const STRING &    exePath );
 
 
