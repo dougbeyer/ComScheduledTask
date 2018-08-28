@@ -2,6 +2,7 @@
 **/ipch
 **/Debug
 **/Release
+**/x64
 **/*.db
 **/*.opendb
 **/*.log
