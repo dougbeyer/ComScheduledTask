@@ -64,16 +64,16 @@ void TaskSchedulerUtilTests::tearDown()
 
 namespace
     {
-    const _TCHAR * TASK_NAME    = _T( "TaskSchedulerUtilTests Task" );
-    const _TCHAR * AUTHOR_NAME  = _T( "Some Author Name" );
+    const STRING TASK_NAME    ( _T( "TaskSchedulerUtilTests Task" ) );
+    const STRING AUTHOR_NAME  ( _T( "Some Author Name" ) );
 
     // The path to Notepad.exe is the same on all Windows versions.
-    const _TCHAR * NOTEPAD_PATH = _T( "C:\\Windows\\Notepad.exe" );
+    const STRING NOTEPAD_PATH ( _T( "C:\\Windows\\Notepad.exe" ) );
 
 
-    bool getNowPlus                 ( unsigned int numSecondsToAdd, struct tm & theTime );
+    //bool getNowPlus                 ( unsigned int numSecondsToAdd, struct tm & theTime );
     bool getNowPlus                 ( unsigned int numSecondsToAdd, TDateTime & theTime );
-    void convertStructTmToTDateTime ( struct tm & cTime, TDateTime & theTime );
+    //void convertStructTmToTDateTime ( struct tm & cTime, TDateTime & theTime );
     }
 
 
@@ -111,8 +111,8 @@ void TaskSchedulerUtilTests::testCreateScheduledTask_LaunchExecutable()
   {
   TaskSchedulerUtil tsu;
 
-  TDateTime startTime = {0};
-  if ( !getNowPlus( 30, startTime ) )
+  TDateTime startTime = 0;
+  if ( !getNowPlus( 5, startTime ) )
     CPPUNIT_ASSERT( false );
 
   // Test attempting to create the task without first initializing COM.
@@ -121,8 +121,18 @@ void TaskSchedulerUtilTests::testCreateScheduledTask_LaunchExecutable()
   // Initialize COM.
   CPPUNIT_ASSERT( tsu.init() );
 
+  // **TODO**: DSB, 08/28/2018 - Not implemented yet. Obtain a map of all existing NotePad process ids.
+
+  // Create the task.
+  CPPUNIT_ASSERT( tsu.createScheduledTask_LaunchExecutable( TASK_NAME, AUTHOR_NAME, startTime, NOTEPAD_PATH ) );
+
   // **TODO**: DSB, 08/26/2018 - Not implemented yet. Verify task exists. Will need to add code to TaskSchedulerUtil
   // class to enumerate registered tasks.
+
+  // **TODO**: DSB, 08/28/2018 - Not implemented yet. Verify the task worked. Get all existing process ids and verify that
+  // there is one that wasn't there before.
+
+  // **TODO**: DSB, 08/28/2018 - Not implemented yet. Kill the NotePad.exe created by the task.
   };
 
 
@@ -138,51 +148,59 @@ void TaskSchedulerUtilTests::testCreateScheduledTask_LaunchExecutable()
 
 namespace
   {
-  bool getNowPlus( unsigned int numSecondsToAdd, struct tm & theTime )
-    {
-    // Prep the output params.
-    SecureZeroMemory( &theTime, sizeof( struct tm ) );
-
-    __time64_t now = _time64( NULL );
-
-    now += numSecondsToAdd;
-
-    if ( 0 == _localtime64_s( &theTime, &now ) )
-      return true;
-    else
-      {
-      CPPUNIT_ASSERT( false );
-      return false;
-      }
-    }
-
-
   bool getNowPlus( unsigned int numSecondsToAdd, TDateTime & theTime )
     {
-    struct tm cTime = {0};
-    if ( !getNowPlus( numSecondsToAdd, cTime ) )
-      {
-      CPPUNIT_ASSERT( false );
-      return false;
-      }
-
-    convertStructTmToTDateTime( cTime, theTime );
+    theTime = _time64( NULL );
+    theTime += numSecondsToAdd;
     return true;
     }
 
 
-  void convertStructTmToTDateTime( struct tm & cTime, TDateTime & theTime )
-    {
-    // Prep the output params.
-    SecureZeroMemory( &theTime, sizeof( TDateTime ) );
+  //bool getNowPlus( unsigned int numSecondsToAdd, struct tm & theTime )
+  //  {
+  //  // Prep the output params.
+  //  SecureZeroMemory( &theTime, sizeof( struct tm ) );
 
-    theTime.year    = (unsigned short)cTime.tm_year + 1900;
-    theTime.month   = (unsigned char)cTime.tm_mon + 1;
-    theTime.day     = (unsigned char)cTime.tm_mday;
-    theTime.hours   = (unsigned char)cTime.tm_hour;
-    theTime.minutes = (unsigned char)cTime.tm_min;
-    theTime.seconds = (unsigned char)cTime.tm_sec;
+  //  __time64_t now = _time64( NULL );
 
-    // Since we're dealing with local time, we can leave the UTC offsets at zero.
-    }
+  //  now += numSecondsToAdd;
+
+  //  if ( 0 == _localtime64_s( &theTime, &now ) )
+  //    return true;
+  //  else
+  //    {
+  //    CPPUNIT_ASSERT( false );
+  //    return false;
+  //    }
+  //  }
+
+
+  //bool getNowPlus( unsigned int numSecondsToAdd, TDateTime & theTime )
+  //  {
+  //  struct tm cTime = {0};
+  //  if ( !getNowPlus( numSecondsToAdd, cTime ) )
+  //    {
+  //    CPPUNIT_ASSERT( false );
+  //    return false;
+  //    }
+
+  //  convertStructTmToTDateTime( cTime, theTime );
+  //  return true;
+  //  }
+
+
+  //void convertStructTmToTDateTime( struct tm & cTime, TDateTime & theTime )
+  //  {
+  //  // Prep the output params.
+  //  SecureZeroMemory( &theTime, sizeof( TDateTime ) );
+
+  //  theTime.year    = (unsigned short)cTime.tm_year + 1900;
+  //  theTime.month   = (unsigned char)cTime.tm_mon + 1;
+  //  theTime.day     = (unsigned char)cTime.tm_mday;
+  //  theTime.hours   = (unsigned char)cTime.tm_hour;
+  //  theTime.minutes = (unsigned char)cTime.tm_min;
+  //  theTime.seconds = (unsigned char)cTime.tm_sec;
+
+  //  // Since we're dealing with local time, we can leave the UTC offsets at zero.
+  //  }
   }

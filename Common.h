@@ -42,3 +42,8 @@ Misc Comments:
 #endif
 
 
+
+// DSB, 08/26/2018 - I could have used the <chrono> datetime stuff. But for this coding exercise, I'll make it simple.
+//
+typedef __time64_t TDateTime;
+

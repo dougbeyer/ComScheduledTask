@@ -35,6 +35,11 @@ namespace cofense
       static void log( const _TCHAR * pszFmt, ... );
 
 
+      // Convert the TDateTime to struct tm.
+      static bool convertDateTimeToStructTm( const TDateTime & theTime, struct tm & timeParts );
+
+
+
       ///////////////////////////////////////////////////////////////////////////////////////////
       //  Getters/Setters
 

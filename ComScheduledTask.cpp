@@ -13,70 +13,35 @@ Misc Comments:
 */
 
 
-// DSB, 08/25/2018 - The guts of this code came from https://docs.microsoft.com/en-us/windows/desktop/taskschd/time-trigger-example--c---
-
-
 #include "stdafx.h"
-
-
-//#define _WIN32_DCOM
-
 #include "windows.h"
-/*
-#include <iostream>
-#include <string>
-#include <iostream>
-//using namespace std;
-//#include <Wbemidl.h>
-//#include <comdef.h>
-//#include <wincred.h>
-//#include <taskschd.h>
-#include <mstask.h>
-
-#pragma comment(lib, "wbemuuid.lib")
-#pragma comment(lib, "taskschd.lib")
-#pragma comment(lib, "comsupp.lib")
-#pragma comment(lib, "credui.lib")
+#include "Utils.h"
+#include "TaskSchedulerUtil.h"
 
 
 using namespace std;
+using namespace cofense;
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 //  Supporting definitions.
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-#ifdef UNICODE
-  #define CIN     wcin
-  #define COUT    wcout
-  #define STRING  wstring
-#else
-  #define CIN     cin
-  #define COUT    cout
-  #define STRING  string
-#endif
-*/
 
 #define RET_CODE_SUCCESS    0
 #define RET_CODE_BAD_ARGS   1
 #define RET_CODE_FAILURE    2
 #define RET_CODE_UNK_EXC    3
 
-/*
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 //  File-scoped support function prototypes/variables.
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 namespace
   {
-  bool              initCom         ();
-  void              usage           ();
-  bool              initCom         ();
-  void              deinitCom       ();
-  bool              initSecurity    ();
-  ITaskScheduler *  getTaskScheduler();
+  void usage();
   }
-*/
+
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -97,15 +62,12 @@ int _tmain( int argc, _TCHAR* argv[] )
   //return RET_CODE_BAD_ARGS;
   //}
 
-//  if (!initCom() )
-//    {
-//    result = RET_CODE_FAILURE;
-//    goto DONE;
-//    }
-
-//  // Get the task scheduler.
-//  ITaskScheduler * pTaskScheduler = getTaskScheduler();
-
+  TaskSchedulerUtil taskScedUtil;
+  if ( !taskScedUtil.init() )
+    {
+    Utils::log( _T( "\nMain() - Faied to init task scheduler." ) );
+    return RET_CODE_FAILURE;
+    }
 
   // **TODO**: DSB, 08/24/2018 - Not implemented yet. Create the new task.
 
@@ -130,63 +92,14 @@ namespace
     }
 
 
-  bool initCom()
-    {
-    //HRESULT hr = CoInitialize( NULL );
-    HRESULT hr = CoInitializeEx( NULL, COINIT_MULTITHREADED );
-
-    bool result = SUCCEEDED( hr );
-
-    if ( !result )
-      COUT << _T( "ERROR - Failed to init COM.\n" );
-
-    return result;
-    }
-
-
-  void deinitCom()
-    {
-    // This function is kind of unnecessary since CoUninitialize() is a void function; hence there's no debug log line
-    // if failure, etc. But, at least it maintains consistency with initCom().
-
-    CoUninitialize();
-    }
-
-
-  bool initSecurity()
-    {
-    HRESULT hr = CoInitializeSecurity(
-            NULL,                       // Security descriptor.
-           -1,                          // Allow COM to choose which authentication services will be registered.
-           NULL,                        // No authentication services to use. Allow COM to choose.
-           NULL,                        // Reserved
-           RPC_C_AUTHN_LEVEL_DEFAULT,   // Authentication level
-           RPC_C_IMP_LEVEL_IMPERSONATE, // Impersonation level
-           NULL,                        // No authentication services to use. Allow COM to choose.
-           EOAC_NONE,                   // No authentication capabilities
-           NULL );                      // Reserved
-
-    bool result = SUCCEEDED( hr );
-
-    if ( !result )
-      COUT << _T( "Failed to initialize security. Error code = 0x" ) << hex << hr << endl;
-
-    return result;
-    }
-
-  ITaskScheduler *  getTaskScheduler()
-    {
-    //HRESULT hr = CoCreateInstance(
-    return NULL;
-    }
-
-
   }
 
-*/
 
 
 
+
+// DSB, 08/25/2018 - This code came from https://docs.microsoft.com/en-us/windows/desktop/taskschd/time-trigger-example--c---
+//
 /********************************************************************
  This sample schedules a task to start notepad.exe 1 minute from the
  time the task is registered.

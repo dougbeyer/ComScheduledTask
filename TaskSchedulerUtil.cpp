@@ -10,7 +10,8 @@ Modified:
 
 Misc Comments:
 
-  1)  The bulk of this code came from https://docs.microsoft.com/en-us/windows/desktop/taskschd/time-trigger-example--c--- used
+  1)  The bulk of this code originally came from https://docs.microsoft.com/en-us/windows/desktop/taskschd/time-trigger-example--c--- used.
+      I've added debug logging, additional error checking, function modularization, etc.
 
 */
 
@@ -23,19 +24,16 @@ Misc Comments:
 
 #define _WIN32_DCOM
 
-#include <windows.h>
-#include <iostream>
-#include <stdio.h>
 #include <comdef.h>
-#include <wincred.h>
+//#include <wincred.h>
 #include <taskschd.h> //  Include the task header file.
 
 #include "TaskSchedulerUtil.h"
 #include "Utils.h"
 
-#pragma comment(lib, "taskschd.lib")
-#pragma comment(lib, "comsupp.lib")
-#pragma comment(lib, "credui.lib")
+#pragma comment( lib, "taskschd.lib" )
+//#pragma comment( lib, "comsupp.lib" )
+//#pragma comment( lib, "credui.lib" )
 
 
 using namespace std;
@@ -49,7 +47,25 @@ using namespace cofense;
 
 namespace
   {
-  ITaskService * getTaskService();
+  // The string format for Task Scheduler times is documented as YYYY-MM-DDTHH:MM:SS(+-)(timezone); where the the timezone
+  // portion (i.e. the difference from UTC) is optional. For this coding exercise, I'm working in local time so I'm ignoring
+  // the timezone portion
+  //.
+  const _TCHAR * FMT_TIME = _T("%4d-%2.2d-%2.2dT%2.2d:%2.2d:%2.2d");
+
+
+
+  STRING            dateTimeToStr             ( TDateTime & theTime );
+  ITaskService *    getTaskService            ();
+  ITaskFolder *     getTaskFolder             ( ITaskService * pService );
+  ITaskDefinition * getTaskDefinition         ( ITaskService * pService );
+  bool              deleteTask                ( ITaskFolder * pFolder, const STRING & taskName );
+  bool              setupTaskRegistrationInfo ( ITaskDefinition * pTask, const STRING & authorName );
+  bool              setupTaskPrincipal        ( ITaskDefinition * pTask );
+  bool              setupTaskSettings         ( ITaskDefinition * pTask );
+  bool              setupTaskTrigger          ( ITaskDefinition * pTask, const TDateTime & startTime );
+  bool              setupTaskAction           ( ITaskDefinition * pTask, const STRING & exePath );
+  bool              registerTask              ( ITaskFolder * pFolder, ITaskDefinition * pTask, const STRING & taskName );
   }
 
 
@@ -96,7 +112,7 @@ bool TaskSchedulerUtil::init()
   // the use of COM to do the task scheduling is an implementation detail.
   //
   HRESULT hr = CoInitializeEx( NULL, COINIT_MULTITHREADED );
-  if( FAILED( hr ) )
+  if ( FAILED( hr ) )
     {
     Utils::log( _T( "\nCoInitializeEx failed: %x" ), hr );
     goto DONE;
@@ -117,7 +133,7 @@ bool TaskSchedulerUtil::init()
     NULL );                         // Reserved
 
 
-  if( FAILED( hr ) )
+  if ( FAILED( hr ) )
     {
     Utils::log( _T( "\nCoInitializeSecurity failed: %x" ), hr );
     goto DONE;
@@ -146,34 +162,94 @@ void TaskSchedulerUtil::deinitCom()
 
 bool TaskSchedulerUtil::createScheduledTask_LaunchExecutable
   (
-  STRING      taskName,
-  STRING      authorName,
-  TDateTime & startTime,
-  STRING      exePath
+  const STRING &    taskName,
+  const STRING &    authorName,
+  const TDateTime & startTime,
+  const STRING &    exePath
   )
   {
   if ( !comInitialized() )
     {
-    Utils::log( _T( "\ncreateScheduledTask() called before COM was initialized." ) );
+    Utils::log( _T( "\ncreateScheduledTask_LaunchExecutable() called before COM was initialized." ) );
     return false;
     }
 
-  ITaskService *pService = getTaskService();
+  ITaskService *    pService  = NULL;
+  ITaskFolder *     pFolder   = NULL;
+  ITaskDefinition * pTask     = NULL;
+
+  pService = getTaskService();
   if ( NULL == pService )
     {
-    Utils::log( _T( "\ncreateScheduledTask() - Failed to get task service." ) );
+    Utils::log( _T( "\ncreateScheduledTask_LaunchExecutable() - Failed to get task service." ) );
     return false;
     }
 
   bool result = false;
 
-  // **TODO**: DSB, 08/26/2018 - Not implemented yet.
+  pFolder = getTaskFolder( pService );
+  if ( NULL == pFolder )
+    {
+    Utils::log( _T( "\ncreateScheduledTask_LaunchExecutable() - Failed to get task folder." ) );
+    goto DONE;
+    }
+
+  // If the same task exists, remove it.
+  if ( !deleteTask( pFolder, taskName ) )
+    Utils::log( _T( "\ncreateScheduledTask_LaunchExecutable() - Failed to delete pre-existing task." ) );
+
+  pTask = getTaskDefinition( pService );
+  if ( NULL == pTask )
+    {
+    Utils::log( _T( "\ncreateScheduledTask_LaunchExecutable() - Failed to get task." ) );
+    goto DONE;
+    }
+
+  if ( !setupTaskRegistrationInfo( pTask, authorName ) )
+    {
+    Utils::log( _T( "\ncreateScheduledTask_LaunchExecutable() - Failed to set task registration info." ) );
+    goto DONE;
+    }
+
+  if ( !setupTaskPrincipal( pTask ) )
+    {
+    Utils::log( _T( "\ncreateScheduledTask_LaunchExecutable() - Failed to set task principal info." ) );
+    goto DONE;
+    }
+
+  if ( !setupTaskSettings( pTask ) )
+    {
+    Utils::log( _T( "\ncreateScheduledTask_LaunchExecutable() - Failed to set task setting info." ) );
+    goto DONE;
+    }
+
+  if ( !setupTaskTrigger( pTask, startTime ) )
+    {
+    Utils::log( _T( "\ncreateScheduledTask_LaunchExecutable() - Failed to set task trigger info." ) );
+    goto DONE;
+    }
+
+  if ( !setupTaskAction( pTask, exePath ) )
+    {
+    Utils::log( _T( "\ncreateScheduledTask_LaunchExecutable() - Failed to set task trigger info." ) );
+    goto DONE;
+    }
+
+  if ( !registerTask( pFolder, pTask, taskName) )
+    {
+    Utils::log( _T( "\ncreateScheduledTask_LaunchExecutable() - Failed to register task." ) );
+    goto DONE;
+    }
 
   result = true;
 
   DONE:
     if ( NULL != pService )
       pService->Release();
+    if ( NULL != pFolder )
+      pFolder->Release();
+    if ( NULL != pTask )
+      pTask->Release();
 
     return result;
   }
@@ -187,6 +263,33 @@ bool TaskSchedulerUtil::createScheduledTask_LaunchExecutable
 
 namespace
   {
+  bool dateTimeToStr( const TDateTime & theTime, STRING & dateTimeStr )
+    {
+    struct tm timeParts = {0};
+    if ( !Utils::convertDateTimeToStructTm( theTime, timeParts ) )
+      {
+      Utils::log( _T( "\ndateTimeToStr() - Failed to convert time to struct tm." ) );
+      return false;
+      }
+
+    _TCHAR buffer[ 22 ] = {};
+    _sntprintf_s( buffer,
+                  22,
+                  _TRUNCATE,
+                  FMT_TIME,
+                  timeParts.tm_year + 1900,
+                  timeParts.tm_mon + 1,
+                  timeParts.tm_mday,
+                  timeParts.tm_hour,
+                  timeParts.tm_min,
+                  timeParts.tm_sec );
+
+    dateTimeStr = buffer;
+
+    return true;
+    }
+
+
   ITaskService * getTaskService()
     {
     ITaskService *pService = NULL;
@@ -207,7 +310,7 @@ namespace
                             _variant_t(), // Use current user's domain.
                             _variant_t()  // Use current user's password.
                           );
-    if( FAILED( hr ) )
+    if ( FAILED( hr ) )
       {
       Utils::log( _T( "\ngetTaskService() - Failed to connect to the ITaskService: %x" ), hr );
       pService->Release();
@@ -216,4 +319,337 @@ namespace
 
     return pService;
     }
+
+
+  ITaskFolder * getTaskFolder( ITaskService * pService )
+    {
+    if ( NULL == pService )
+      {
+      Utils::log( _T( "\ngetTaskFolder() - Invalid args." ) );
+      return NULL;
+      }
+
+    // For this coding exercise, I'll assume it's ok to store the task in the root folder.
+    //
+    ITaskFolder *pRootFolder = NULL;
+    HRESULT hr = pService->GetFolder( _bstr_t( _T( "\\" ) ) , &pRootFolder );
+    if ( FAILED( hr ) )
+      {
+      Utils::log( _T( "\ngetTaskFolder() - Cannot get root folder pointer: %x" ), hr );
+      return NULL;
+      }
+
+    return pRootFolder;
+    }
+
+
+  ITaskDefinition * getTaskDefinition ( ITaskService * pService )
+    {
+    if ( NULL == pService )
+      {
+      Utils::log( _T( "\ngetTaskDefinition() - Invalid args." ) );
+      return NULL;
+      }
+
+    ITaskDefinition * pTask = NULL;
+    HRESULT hr = pService->NewTask( 0, &pTask );
+    if ( FAILED( hr ) )
+      {
+      Utils::log( _T( "\ngetTaskDefinition() - Failed to create task: %x." ), hr );
+      return NULL;
+      }
+
+    return pTask;
+    }
+
+
+  bool setupTaskRegistrationInfo( ITaskDefinition * pTask, const STRING & authorName )
+    {
+    if ( NULL == pTask || authorName.empty() )
+      {
+      Utils::log( _T( "\nsetupTaskRegistrationInfo() - Invalid args." ) );
+      return false;
+      }
+
+    IRegistrationInfo * pRegInfo = NULL;
+    HRESULT hr = pTask->get_RegistrationInfo( &pRegInfo );
+    if ( FAILED( hr ) )
+      {
+      Utils::log( _T( "\nsetupTaskRegistrationInfo() - Cannot get task registration info: %x" ), hr );
+      return false;
+      }
+
+    hr = pRegInfo->put_Author(_bstr_t( authorName.c_str() ) );
+    bool result = SUCCEEDED( hr );
+    if ( !result )
+      Utils::log( _T( "\nsetupTaskRegistrationInfo() - Cannot put identification info: %x" ), hr );
+
+    pRegInfo->Release();
+    return result;
+    }
+
+
+  bool setupTaskPrincipal( ITaskDefinition * pTask )
+    {
+    if ( NULL == pTask )
+      {
+      Utils::log( _T( "\nsetupTaskPrincipal() - Invalid args." ) );
+      return false;
+      }
+
+    IPrincipal * pPrincipal = NULL;
+    HRESULT hr = pTask->get_Principal( &pPrincipal );
+    if ( FAILED( hr ) )
+      {
+      Utils::log( _T( "\nsetupTaskPrincipal() - Cannot get task principal: %x" ), hr );
+      return false;
+      }
+
+    // Set up principal logon type to the interactive logon.
+    hr = pPrincipal->put_LogonType( TASK_LOGON_INTERACTIVE_TOKEN );
+    bool result = SUCCEEDED( hr );
+    if ( !result )
+      Utils::log( _T( "\nsetupTaskPrincipal() - Cannot put principal info: %x" ), hr );
+
+    pPrincipal->Release();
+    return result;
+    }
+
+
+  bool setupTaskSettings( ITaskDefinition * pTask )
+    {
+    if ( NULL == pTask )
+      {
+      Utils::log( _T( "\nsetupTaskSettings() - Invalid args." ) );
+      return false;
+      }
+
+    ITaskSettings * pSettings     = NULL;
+    IIdleSettings * pIdleSettings = NULL;
+
+    // Create the settings for the task
+    HRESULT hr = pTask->get_Settings( &pSettings );
+    if ( FAILED( hr ) )
+      {
+      Utils::log( _T( "\nsetupTaskSettings() - Cannot get task settings: %x" ), hr );
+      return false;
+      }
+
+    // Set setting values for the task.
+    hr = pSettings->put_StartWhenAvailable( VARIANT_TRUE );
+    bool result = SUCCEEDED( hr );
+    if ( !result )
+      {
+      Utils::log( _T( "\nsetupTaskSettings() - Cannot set task settings: %x" ), hr );
+      goto DONE;
+      }
+
+    // Set the idle settings for the task.
+    hr = pSettings->get_IdleSettings( &pIdleSettings );
+    result = SUCCEEDED( hr );
+    if ( !result )
+      {
+      Utils::log( _T( "\nsetupTaskSettings() - Cannot get task idle settings: %x" ), hr );
+      goto DONE;
+      }
+
+    hr = pIdleSettings->put_WaitTimeout( L"PT5M" );
+    result = SUCCEEDED( hr );
+    if ( !result )
+      Utils::log( _T( "\nsetupTaskSettings() - Cannot set task idle settings: %x" ), hr );
+
+    DONE:
+      pSettings->Release();
+      if ( NULL != pIdleSettings )
+        pIdleSettings->Release();
+      return result;
+    }
+
+
+  bool setupTaskTrigger( ITaskDefinition * pTask, const TDateTime & startTime )
+    {
+    if ( NULL == pTask )
+      {
+      Utils::log( _T( "\nsetupTaskTrigger() - Invalid args." ) );
+      return false;
+      }
+
+    ITriggerCollection *  pTriggerCollection  = NULL;
+    ITrigger *            pTrigger            = NULL;
+    ITimeTrigger *        pTimeTrigger        = NULL;
+
+    STRING dateTimeStr;
+
+    HRESULT hr = pTask->get_Triggers( &pTriggerCollection );
+    if( FAILED( hr ) )
+      {
+      Utils::log( _T( "\nsetupTaskSettings() - Cannot set trigger collection: %x" ), hr );
+      return false;
+      }
+
+    //  Add the time trigger to the task.
+    hr = pTriggerCollection->Create( TASK_TRIGGER_TIME, &pTrigger );
+    bool result = SUCCEEDED( hr );
+    if( !result )
+      {
+      Utils::log( _T( "\nsetupTaskSettings() - Cannot create trigger: %x" ), hr );
+      goto DONE;
+      }
+
+    hr = pTrigger->QueryInterface( IID_ITimeTrigger, (void**) &pTimeTrigger );
+    result = SUCCEEDED( hr );
+    if( !result )
+      {
+      Utils::log( _T( "\nsetupTaskSettings() - QueryInterface call failed for ITimeTrigger: %x" ), hr );
+      goto DONE;
+      }
+
+    // **FUTURE**: DSB, 08/27/2018 - The id of the trigger is probably not important since there's only one trigger for
+    // this task. However, I may want to use a guid or something to ensure uniqueness.
+    //
+    // Trigger id.
+    hr = pTimeTrigger->put_Id( _bstr_t( _T( "Trigger1" ) ) );
+    if( FAILED( hr ) )
+      Utils::log( _T( "\nsetupTaskSettings() - Cannot put trigger ID: %x" ), hr );
+
+    // Trigger end time.
+    TDateTime endTime = startTime + 60; // Plus 60 seconds. The time delta was chosen arbitrarily.
+    if ( dateTimeToStr( endTime, dateTimeStr ) )
+      {
+      hr = pTimeTrigger->put_EndBoundary( _bstr_t( dateTimeStr.c_str() ) );
+      if( FAILED( hr ) )
+        Utils::log( _T( "\nsetupTaskSettings() - Cannot put end boundary on trigger: %x" ), hr );
+      }
+    else
+      Utils::log( _T( "\nsetupTaskSettings() - Faled to convert end time to string." ) );
+
+    // Trigger start time.
+    if ( dateTimeToStr( startTime, dateTimeStr ) )
+      {
+      hr = pTimeTrigger->put_StartBoundary( _bstr_t( dateTimeStr.c_str() ) );
+      result = SUCCEEDED( hr );
+      if( !result )
+        Utils::log( _T( "\nsetupTaskSettings() - Cannot add start boundary to trigger: %x" ), hr );
+      }
+    else
+      {
+      Utils::log( _T( "\nsetupTaskSettings() - Faled to convert start time to string." ) );
+      result = false;
+      }
+
+    DONE:
+      pTriggerCollection->Release();
+      if ( NULL != pTrigger )
+        pTrigger->Release();
+      if ( NULL != pTimeTrigger )
+        pTimeTrigger->Release();
+      return result;
+    }
+
+
+  bool setupTaskAction( ITaskDefinition * pTask, const STRING & exePath )
+    {
+    if ( NULL == pTask || exePath.empty() )
+      {
+      Utils::log( _T( "\nsetupTaskAction() - Invalid args." ) );
+      return false;
+      }
+
+    IActionCollection * pActionCollection = NULL;
+    IAction *           pAction           = NULL;
+    IExecAction *       pExecAction       = NULL;
+
+    HRESULT hr = pTask->get_Actions( &pActionCollection );
+    if( FAILED( hr ) )
+      {
+      Utils::log( _T( "\nsetupTaskAction() - Cannot get Task collection pointer: %x" ), hr );
+      return false;
+      }
+
+    // Create the action, specifying that it is an executable action.
+    hr = pActionCollection->Create( TASK_ACTION_EXEC, &pAction );
+    bool result = SUCCEEDED( hr );
+    if( !result )
+      {
+      Utils::log( _T( "\nsetupTaskAction() - Cannot create the action: %x" ), hr );
+      goto DONE;
+      }
+
+    // QI for the executable task pointer.
+    hr = pAction->QueryInterface( IID_IExecAction, (void**) &pExecAction );
+    result = SUCCEEDED( hr );
+    if( !result )
+      {
+      Utils::log( _T( "\nsetupTaskAction() - QueryInterface call failed for IExecAction: %x" ), hr );
+      goto DONE;
+      }
+
+    // Set the path of the executable to notepad.exe.
+    hr = pExecAction->put_Path( _bstr_t( exePath.c_str() ) );
+    result = SUCCEEDED( hr );
+    if( !result )
+      {
+      Utils::log( _T( "\nsetupTaskAction() - Cannot put action path: %x" ), hr );
+      goto DONE;
+      }
+
+    DONE:
+      pActionCollection->Release();
+      if ( NULL != pAction )
+        pAction->Release();
+      if ( NULL != pExecAction )
+        pExecAction->Release();
+      return result;
+    }
+
+
+  bool registerTask( ITaskFolder * pFolder, ITaskDefinition * pTask, const STRING & taskName )
+    {
+    if ( NULL == pFolder || NULL == pTask || taskName.empty() )
+      {
+      Utils::log( _T( "\nregisterTask() - Invalid args." ) );
+      return false;
+      }
+
+    IRegisteredTask * pRegisteredTask = NULL;
+    HRESULT hr = pFolder->RegisterTaskDefinition( _bstr_t( taskName.c_str() ),
+                                                  pTask,
+                                                  TASK_CREATE_OR_UPDATE,
+                                                  _variant_t(),
+                                                  _variant_t(),
+                                                  TASK_LOGON_INTERACTIVE_TOKEN,
+                                                  _variant_t( _T( "" ) ),
+                                                  &pRegisteredTask );
+
+    bool result = SUCCEEDED( hr );
+    if( !result )
+      Utils::log( _T( "\nregisterTask() - Error registering the task: %x" ), hr );
+
+    if ( NULL != pRegisteredTask )
+      pRegisteredTask->Release();
+
+    return result;
+    }
+
+
+  bool deleteTask( ITaskFolder * pFolder, const STRING & taskName )
+    {
+    if ( NULL == pFolder || taskName.empty() )
+      {
+      Utils::log( _T( "\nregisterTask() - Invalid args." ) );
+      return false;
+      }
+
+    //  If the task exists, remove it.
+    HRESULT hr = pFolder->DeleteTask( _bstr_t( taskName.c_str() ), 0 );
+    bool result = SUCCEEDED( hr ) || ( FAILED( hr ) && HRESULT_FROM_WIN32( ERROR_FILE_NOT_FOUND ) == hr );
+
+    if ( !result )
+      Utils::log( _T( "\ndeleteTask() - Failed to delete task: %x" ), hr );
+
+    return result;
+    }
+
   }
+
+

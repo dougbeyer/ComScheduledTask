@@ -23,17 +23,29 @@ namespace cofense
 
   // DSB, 08/26/2018 - I could have used the <chrono> datetime stuff. But for this coding exercise, I'll make it simple.
   //
-  typedef struct
-    {
-    unsigned short  year;
-    unsigned char   month;
-    unsigned char   day;
-    unsigned char   hours;
-    unsigned char   minutes;
-    unsigned char   seconds;
-    char            utcOffsetHours; // Can be negative (e.g. Pacific time zone = -8).
-    unsigned char   utcOffsetMinutes;
-    } TDateTime;
+  //typedef __time64_t TDateTime;
+
+  //typedef struct
+  //  {
+  //  unsigned short  year;
+  //  unsigned char   month;
+  //  unsigned char   day;
+  //  unsigned char   hours;
+  //  unsigned char   minutes;
+  //  unsigned char   seconds;
+  //  char            utcOffsetHours; // Can be negative (e.g. Pacific time zone = -8).
+  //  unsigned char   utcOffsetMinutes;
+
+  //  void addSeconds( unsigned int seconds )
+  //    {
+  //    this.seconds += seconds;
+  //    if ( this.seconds > 60 )
+  //      {
+  //      this.minutes += 1;
+  //      this.seconds -= 60;
+  //      }
+  //    }
+  //  } TDateTime;
 
 
   class TaskSchedulerUtil
@@ -63,10 +75,10 @@ namespace cofense
       // createScheduledTask_LaunchExecutable() will launch the specified executable at the specified time. The task will
       // become deactivated shortly after the start time; effectively making this a "run once" task.
       //
-      bool createScheduledTask_LaunchExecutable(  STRING      taskName,
-                                                  STRING      authorName,
-                                                  TDateTime & startTime,
-                                                  STRING      exePath );
+      bool createScheduledTask_LaunchExecutable(  const STRING &    taskName,
+                                                  const STRING &    authorName,
+                                                  const TDateTime & startTime,
+                                                  const STRING &    exePath );
 
 
       ///////////////////////////////////////////////////////////////////////////////////////////
