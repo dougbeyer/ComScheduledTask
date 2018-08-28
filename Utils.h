@@ -17,6 +17,7 @@ Misc Comments:
 
 #include <string>
 #include <Windows.h>
+#include <set>
 
 
 namespace cofense
@@ -37,6 +38,11 @@ namespace cofense
 
       // Convert the TDateTime to struct tm.
       static bool convertDateTimeToStructTm( const TDateTime & theTime, struct tm & timeParts );
+
+
+      // Returns a set of the process ids for all processes with the param name running on the local machine. If processName
+      // is blank, all process ids will be returned.
+      static bool getProcessesWithName( const STRING & processName, std::set<DWORD> & processIds );
 
 
 
