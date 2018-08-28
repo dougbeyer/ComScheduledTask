@@ -96,7 +96,7 @@ void TaskSchedulerUtilTests::testInit()
   TaskSchedulerUtil tsu;
   CPPUNIT_ASSERT( tsu.init() );
 
-  // init multiple times.
+  // init() called multiple times.
   for ( unsigned int i = 0; i < 10; ++i )
     {
     CPPUNIT_ASSERT( tsu.init() );
