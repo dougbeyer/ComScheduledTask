@@ -26,6 +26,8 @@ class TaskSchedulerUtilTests : public CPPUNIT_NS::TestFixture
     CPPUNIT_TEST( testConstruction );
     CPPUNIT_TEST( testInit );
     CPPUNIT_TEST( testCreateScheduledTask_LaunchExecutable );
+    CPPUNIT_TEST( testDeleteScheduledTask );
+    CPPUNIT_TEST( testTaskExists );
     // Add additional tests here...
   CPPUNIT_TEST_SUITE_END();
 
@@ -43,6 +45,8 @@ class TaskSchedulerUtilTests : public CPPUNIT_NS::TestFixture
     void testConstruction();
     void testInit();
     void testCreateScheduledTask_LaunchExecutable();
+    void testDeleteScheduledTask();
+    void testTaskExists();
 
   };
 

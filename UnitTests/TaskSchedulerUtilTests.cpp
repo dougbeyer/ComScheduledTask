@@ -122,6 +122,57 @@ void TaskSchedulerUtilTests::testCreateScheduledTask_LaunchExecutable()
 
   // Verify that the result file does exist.
   CPPUNIT_ASSERT( waitForFile( COPIED_FILE, 5 ) );
+
+  // Remove the scheduled task.
+  CPPUNIT_ASSERT( tsu.deleteScheduledTask( TASK_NAME ) );
+  };
+
+
+void TaskSchedulerUtilTests::testDeleteScheduledTask()
+  {
+  TaskSchedulerUtil tsu;
+
+  // Test attempting to delete the task without first initializing COM.
+  CPPUNIT_ASSERT( !tsu.deleteScheduledTask( TASK_NAME ) );
+
+  // Initialize COM.
+  CPPUNIT_ASSERT( tsu.init() );
+
+  // Create the task.
+  CPPUNIT_ASSERT( tsu.createScheduledTask_LaunchExecutable( TASK_NAME, AUTHOR_NAME, WORKING_DIR, EXE_PATH ) );
+
+  // Verify that the result file does exist. This is a sufficient to verify that the task was created successfully.
+  CPPUNIT_ASSERT( waitForFile( COPIED_FILE, 5 ) );
+
+  // Remove the scheduled task.
+  CPPUNIT_ASSERT( tsu.deleteScheduledTask( TASK_NAME ) );
+
+  // Verify the task is gone.
+  CPPUNIT_ASSERT( !tsu.taskExists( TASK_NAME ) );
+  };
+
+
+void TaskSchedulerUtilTests::testTaskExists()
+  {
+  TaskSchedulerUtil tsu;
+
+  // Test attempting to check the task without first initializing COM.
+  CPPUNIT_ASSERT( !tsu.taskExists( TASK_NAME ) );
+
+  // Initialize COM.
+  CPPUNIT_ASSERT( tsu.init() );
+
+  // Create the task.
+  CPPUNIT_ASSERT( tsu.createScheduledTask_LaunchExecutable( TASK_NAME, AUTHOR_NAME, WORKING_DIR, EXE_PATH ) );
+
+  // Verify the task exists.
+  CPPUNIT_ASSERT( tsu.taskExists( TASK_NAME ) );
+
+  // Remove the scheduled task.
+  CPPUNIT_ASSERT( tsu.deleteScheduledTask( TASK_NAME ) );
+
+  // Verify the task is gone.
+  CPPUNIT_ASSERT( !tsu.taskExists( TASK_NAME ) );
   };
 
 

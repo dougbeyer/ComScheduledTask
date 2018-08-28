@@ -27,11 +27,13 @@ Misc Comments:
 #include <comdef.h>
 //#include <wincred.h>
 #include <taskschd.h> //  Include the task header file.
+//#include <mstask.h>
 
 #include "TaskSchedulerUtil.h"
 #include "Utils.h"
 
 #pragma comment( lib, "taskschd.lib" )
+//#pragma comment( lib, "mstask.lib" )
 //#pragma comment( lib, "comsupp.lib" )
 //#pragma comment( lib, "credui.lib" )
 
@@ -55,17 +57,18 @@ namespace
 
 
 
-  STRING            dateTimeToStr             ( TDateTime & theTime );
-  ITaskService *    getTaskService            ();
-  ITaskFolder *     getTaskFolder             ( ITaskService * pService );
-  ITaskDefinition * getTaskDefinition         ( ITaskService * pService );
-  bool              deleteTask                ( ITaskFolder * pFolder, const STRING & taskName );
-  bool              setupTaskRegistrationInfo ( ITaskDefinition * pTask, const STRING & authorName );
-  bool              setupTaskPrincipal        ( ITaskDefinition * pTask );
-  bool              setupTaskSettings         ( ITaskDefinition * pTask );
-  bool              setupTaskTrigger          ( ITaskDefinition * pTask );
-  bool              setupTaskAction           ( ITaskDefinition * pTask, const STRING & workingDir, const STRING & exePath );
-  bool              registerTask              ( ITaskFolder * pFolder, ITaskDefinition * pTask, const STRING & taskName );
+  bool                        dateTimeToStr             (const TDateTime & theTime, STRING & dateTimeStr);
+  ITaskService *              getTaskService            ();
+  ITaskFolder *               getTaskFolder             ( ITaskService * pService );
+  ITaskDefinition *           getTaskDefinition         ( ITaskService * pService );
+  IRegisteredTaskCollection * getRegisteredTasks        ( ITaskFolder * pFolder );
+  bool                        deleteTask                ( ITaskFolder * pFolder, const STRING & taskName );
+  bool                        setupTaskRegistrationInfo ( ITaskDefinition * pTask, const STRING & authorName );
+  bool                        setupTaskPrincipal        ( ITaskDefinition * pTask );
+  bool                        setupTaskSettings         ( ITaskDefinition * pTask );
+  bool                        setupTaskTrigger          ( ITaskDefinition * pTask );
+  bool                        setupTaskAction           ( ITaskDefinition * pTask, const STRING & workingDir, const STRING & exePath );
+  bool                        registerTask              ( ITaskFolder * pFolder, ITaskDefinition * pTask, const STRING & taskName );
   }
 
 
@@ -255,6 +258,147 @@ bool TaskSchedulerUtil::createScheduledTask_LaunchExecutable
   }
 
 
+bool TaskSchedulerUtil::deleteScheduledTask( const STRING & taskName )
+  {
+  if ( !comInitialized() )
+    {
+    Utils::log( _T( "\ndeleteScheduledTask() called before COM was initialized." ) );
+    return false;
+    }
+
+  if ( taskName.empty() )
+    {
+    Utils::log( _T( "\ndeleteScheduledTask() - The task name must not be empty." ) );
+    return false;
+    }
+
+  ITaskService *  pService  = NULL;
+  ITaskFolder *   pFolder   = NULL;
+
+  pService = getTaskService();
+  if ( NULL == pService )
+    {
+    Utils::log( _T( "\ndeleteScheduledTask() - Failed to get task service." ) );
+    return false;
+    }
+
+  bool result = false;
+
+  pFolder = getTaskFolder( pService );
+  if ( NULL == pFolder )
+    {
+    Utils::log( _T( "\ndeleteScheduledTask() - Failed to get task folder." ) );
+    goto DONE;
+    }
+
+  result = deleteTask( pFolder, taskName );
+  if ( !result )
+    Utils::log( _T( "\ndeleteScheduledTask() - Failed to delete task." ) );
+
+  DONE:
+    if ( NULL != pService )
+      pService->Release();
+    if ( NULL != pFolder )
+      pFolder->Release();
+
+    return result;
+  }
+
+
+bool TaskSchedulerUtil::taskExists( const STRING & taskName )
+  {
+  if ( !comInitialized() )
+    {
+    Utils::log( _T( "\ntaskExists() called before COM was initialized." ) );
+    return false;
+    }
+
+  if ( taskName.empty() )
+    {
+    Utils::log( _T( "\ntaskExists() - The task name must not be empty." ) );
+    return false;
+    }
+
+  ITaskService *              pService          = NULL;
+  ITaskFolder *               pFolder           = NULL;
+  IRegisteredTaskCollection * pTaskCollection   = NULL;
+  IRegisteredTask *           pRegisteredTask   = NULL;
+
+  pService = getTaskService();
+  if ( NULL == pService )
+    {
+    Utils::log( _T( "\ntaskExists() - Failed to get task service." ) );
+    return false;
+    }
+
+  bool result = false;
+
+  pFolder = getTaskFolder( pService );
+  if ( NULL == pFolder )
+    {
+    Utils::log( _T( "\ntaskExists() - Failed to get task folder." ) );
+    goto DONE;
+    }
+
+  pTaskCollection = getRegisteredTasks( pFolder );
+  if ( NULL == pTaskCollection )
+    {
+    Utils::log( _T( "\ntaskExists() - Failed to get task collection." ) );
+    goto DONE;
+    }
+
+  LONG numTasks = 0;
+  HRESULT hr = pTaskCollection->get_Count( &numTasks );
+  if ( 0 == numTasks )
+    {
+    Utils::log( _T( "\ntaskExists() - No registered tasks." ) );
+    goto DONE;
+    }
+
+  const _TCHAR * pwszTaskName = taskName.c_str();
+  size_t nameLen  = taskName.length();
+  BSTR currTaskName   = NULL;
+  for ( LONG i = 0; i < numTasks; ++i )
+    {
+    hr = pTaskCollection->get_Item( _variant_t( i + 1 ), &pRegisteredTask );
+    if ( FAILED( hr ) )
+      {
+      Utils::log( _T( "\ntaskExists() - Cannot get the registered task item at index = %d: %x" ), i + 1, hr );
+      continue;
+      }
+
+    hr = pRegisteredTask->get_Name( &currTaskName );
+    if ( FAILED( hr ) )
+      {
+      Utils::log( _T( "\ntaskExists() - Cannot get the registered task's name: %x" ), hr );
+      continue;
+      }
+
+    if ( 0 == _tcsnicmp( pwszTaskName, currTaskName, nameLen ) )
+      {
+      result = true;
+      break;
+      }
+
+    // We didn't find the task. So prep for the next iteration.
+    pRegisteredTask->Release();
+    pRegisteredTask = NULL;
+    }
+
+  DONE:
+    pService->Release();
+    if ( NULL != pFolder )
+      pFolder->Release();
+    if ( NULL != pTaskCollection )
+      pTaskCollection->Release();
+    if ( NULL != pRegisteredTask )
+      pRegisteredTask->Release();
+
+    return result;
+  }
+
+
+
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -292,7 +436,7 @@ namespace
 
   ITaskService * getTaskService()
     {
-    ITaskService *pService = NULL;
+    ITaskService * pService = NULL;
     HRESULT hr = CoCreateInstance(  CLSID_TaskScheduler,
                                     NULL,
                                     CLSCTX_INPROC_SERVER,
@@ -331,7 +475,7 @@ namespace
 
     // For this coding exercise, I'll assume it's ok to store the task in the root folder.
     //
-    ITaskFolder *pRootFolder = NULL;
+    ITaskFolder * pRootFolder = NULL;
     HRESULT hr = pService->GetFolder( _bstr_t( _T( "\\" ) ) , &pRootFolder );
     if ( FAILED( hr ) )
       {
@@ -360,6 +504,26 @@ namespace
       }
 
     return pTask;
+    }
+
+
+  IRegisteredTaskCollection * getRegisteredTasks( ITaskFolder * pFolder )
+    {
+    if ( NULL == pFolder )
+      {
+      Utils::log( _T( "\ngetRegisteredTasks() - Invalid args." ) );
+      return NULL;
+      }
+
+    IRegisteredTaskCollection* pTaskCollection = NULL;
+    HRESULT hr = pFolder->GetTasks( 0, &pTaskCollection ); // Excluding hidden tasks.
+    if ( FAILED( hr ) )
+      {
+      Utils::log( _T( "\ngetRegisteredTasks() - Failed to task collection: %x." ), hr );
+      return NULL;
+      }
+
+    return pTaskCollection;
     }
 
 
@@ -630,7 +794,7 @@ namespace
     bool result = SUCCEEDED( hr ) || ( FAILED( hr ) && HRESULT_FROM_WIN32( ERROR_FILE_NOT_FOUND ) == hr );
 
     if ( !result )
-      Utils::log( _T( "\ndeleteTask() - Failed to delete task: %x" ), hr );
+      Utils::log( _T( "\ndeleteTask() - Failed to delete task \"%s\": %x" ), taskName.c_str(), hr );
 
     return result;
     }

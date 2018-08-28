@@ -53,6 +53,15 @@ namespace cofense
                                                   const STRING &    exePath );
 
 
+      // Deletes the named task.
+      bool deleteScheduledTask( const STRING & taskName );
+
+
+      // Returns true if the named task is registered; false otherwise
+      bool taskExists( const STRING & taskName );
+
+
+
       ///////////////////////////////////////////////////////////////////////////////////////////
       //  Getters/Setters
 
